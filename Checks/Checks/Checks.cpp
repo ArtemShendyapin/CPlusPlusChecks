@@ -105,6 +105,25 @@ void Deck::printDeck() {
 	}
 }
 
+void Deck::printMove(const vector<pair<int, int>>& move) {
+	for (int i = 0; i < move.size() - 1; ++i) {
+		cout << char('a' + move[i].second) << move[i].first + 1 << "-";
+	}
+	cout << char('a' + move.back().second) << move.back().first + 1;
+}
+
+void Deck::printMoveOptions(const vector<vector<pair<int, int>>>& options) {
+	if (options.empty()) return;
+	cout << "Move options:" << endl;
+	for (int i = 0; i < options.size() - 1; ++i) {
+		printMove(options[i]);
+		cout << ", ";
+	}
+	printMove(options.back());
+	cout << endl;
+}
+
+
 vector<pair<int, int>> Deck::isValidRecord(const string& s) {
 
 	vector<pair<int, int>> rez, no_ans;
@@ -227,7 +246,7 @@ void Deck::canCheckEatFurther(
 	}
 
 	vector<pair<int, int>> canEat;
-	bool b = false;
+	bool isSomethingToEat = false;
 	int dirColor = 0;
 	if (turn == false) {
 		dirColor = 2;
@@ -236,7 +255,7 @@ void Deck::canCheckEatFurther(
 		direction dir = static_cast<direction>(dirInt);
 		canEat = canEatThisDirection(hunter, prey, killer, eat_queue, dir);
 		if (!canEat.empty()) {
-			b = true;
+			isSomethingToEat = true;
 			for (auto field : canEat) {
 				hunter.erase({ killer.first, killer.second });
 				hunter.insert({ field.first, field.second });
@@ -250,82 +269,14 @@ void Deck::canCheckEatFurther(
 		}
 	}
 
-	if (!b && !eat_queue.empty()) {
+	if (!isSomethingToEat && !eat_queue.empty()) {
 		must_eat.push_back(eat_step_queue);
+		cout << "isSomethingToEat=" << isSomethingToEat << endl;
+		printMove(eat_step_queue);
+		cout << endl;
 		eatens.push_back(eat_queue);
 	}
 }
-
-/*
-vector<pair<int, int>> Deck::canQueenEatThisDirection(
-	set<pair<int, int>>& hunter,
-	set<pair<int, int>>& prey,
-	pair<int, int>& killer,
-	vector<pair<int, int>>& eat_queue,
-	direction dir
-)
-{
-	int x = killer.first, y = killer.second;
-	int x_dir, y_dir, x_off, y_off;
-	directionOffsets(dir, x_off, y_off);
-	x_dir = x_off;
-	y_dir = y_off;
-
-	while (true) {
-		// Current field that we check to find a check that can be eaten
-		pair<int, int> step = { x + x_off, y + y_off };
-		// Field after that field on same direction
-		pair<int, int> overstep = { x + x_off + x_dir, y + y_off + y_dir };
-		// Can't eat check on "step" field (even if there is no check on it)
-		if (x + x_off + 1 >= row_num || y + y_off + 1 >= col_num
-			|| x + x_off - 1 < 0 || y + y_off - 1 < 0
-			|| any_of(eat_queue.begin(), eat_queue.end(),
-				[step](pair<int, int> el) { return el == step; })
-			|| hunter.find(step) != hunter.end()
-			|| prey.find(overstep) != prey.end() && prey.find(step) != prey.end()
-			|| any_of(eat_queue.begin(), eat_queue.end(),
-				[overstep](pair<int, int> el) { return el == overstep; })
-			|| hunter.find(overstep) != hunter.end()) {
-//			if (dir == down_right && x + x_off == 2 && y + y_off == 4) {
-//				cout << any_of(eat_queue.begin(), eat_queue.end(), [step](pair<int, int> el) { return el == step; }) << endl;
-//				cout << (hunter.find(step) != hunter.end()) << endl << (prey.find(overstep) != prey.end()) << endl;
-//			}
-
-			return vector<pair<int, int>>();
-		}
-		// We can eat on "step" field, now we need to find out, is there check to eat?
-		if (prey.find(step) != prey.end()) {
-			eat_queue.push_back(step);
-			break;
-		}
-		x_off += x_dir;
-		y_off += y_dir;
-	}
-
-	x_off += x_dir;
-	y_off += y_dir;
-	// Find all fields where queen can be placed after eating
-	vector<pair<int, int>> rez;
-	while (true) {
-		pair<int, int> step = { x + x_off, y + y_off };
-		pair<int, int> overstep = { x + x_off + x_dir, y + y_off + y_dir };
-		if (x + x_off >= row_num || y + y_off >= col_num
-			|| x + x_off < 0 || y + y_off < 0
-			|| any_of(eat_queue.begin(), eat_queue.end(),
-				[step](pair<int, int> el) { return el == step; })
-			|| hunter.find(step) != hunter.end()) {
-
-			return rez;
-		}
-		else {
-			rez.push_back({ x + x_off, y + y_off });
-		}
-		x_off += x_dir;
-		y_off += y_dir;
-	}
-	return rez;
-}
-*/
 
 void Deck::canQueenEatFurther(
 	set<pair<int, int>>& hunter,
@@ -340,14 +291,13 @@ void Deck::canQueenEatFurther(
 		eat_step_queue.push_back(killer);
 	}
 	vector<pair<int, int>> canEat;
-	bool b = false;
+	bool isSomethingToEat = false;
 	for (int dirInt = 0; dirInt < 4; ++dirInt) {
 		direction dir = static_cast<direction>(dirInt);
 		canEat = canEatThisDirection(hunter, prey, killer, eat_queue, dir);
 		if (!canEat.empty()) {
-			b = true;
+			isSomethingToEat = true;
 			for (auto field : canEat) {
-//				cout << char('a' + field.second) << field.first + 1 << endl;
 				hunter.erase({ killer.first, killer.second });
 				hunter.insert({ field.first, field.second });
 				eat_step_queue.push_back({ field.first, field.second });
@@ -360,7 +310,7 @@ void Deck::canQueenEatFurther(
 		}
 	}
 
-	if (!b && !eat_queue.empty()) {
+	if (!isSomethingToEat && !eat_queue.empty()) {
 		must_eat.push_back(eat_step_queue);
 		eatens.push_back(eat_queue);
 	}
@@ -376,6 +326,8 @@ set<pair<int, int>> set_union(set<pair<int, int>>& a, set<pair<int, int>>& b) {
 
 void Deck::mustEat() {
 
+	must_eat.clear();
+	eatens.clear();
 	set<pair<int, int>> const_hunter, const_hunter_q, hunter, prey;
 	set<pair<int, int>>::iterator it;
 	if (turn) {
@@ -393,40 +345,17 @@ void Deck::mustEat() {
 
 	for (auto check : const_hunter) {
 
-		cout << "Check: " << char('a' + check.second) << check.first + 1 << endl;
 		vector<pair<int, int>> eat_queue, eat_step_queue;
-		must_eat.clear();
 		canCheckEatFurther(hunter, prey, check, eat_queue, eat_step_queue);
-		cout << "Can eat:" << endl;
-		for (auto el : must_eat) {
-			for (auto el1 : el) {
-				cout << char('a' + el1.second) << el1.first + 1 << "-";
-			}
-			cout << endl;
-		}
 	}
 	for (auto check : const_hunter_q) {
 
-		cout << "Queen: " << char('a' + check.second) << check.first + 1 << endl;
 		vector<pair<int, int>> eat_queue, eat_step_queue;
 		canQueenEatFurther(hunter, prey, check, eat_queue, eat_step_queue);
-		cout << "Can eat:" << endl;
-		for (auto el : must_eat) {
-			for (auto el1 : el) {
-				cout << char('a' + el1.second) << el1.first + 1 << "-";
-			}
-			cout << endl;
-		}
 	}
 }
 
 bool Deck::isValidEat() {
-
-	cout << "Turn: ";
-	for (auto el1 : n_move) {
-		cout << char('a' + el1.second) << el1.first + 1 << "-";
-	}
-	cout << endl;
 
 	int eatInd = -1;
 	for (int i = 0; i < must_eat.size(); ++i) {
@@ -508,16 +437,11 @@ void Deck::possibleMoves() {
 	}
 }
 
-void Deck::isValidMove() {
+bool Deck::isValidMove() {
 	if (!any_of(moves.begin(), moves.end(),
-		[=](vector<pair<int, int>> el) { return el == n_move; })) {
-		cout << "Invalid move! Right moves: ";
-		for (auto step : moves) {
-			cout << char(step.front().second + 'a') << step.front().first + 1
-				<< "-" << char(step.back().second + 'a') << step.back().first + 1 << ", ";
-		}
-		cout << endl;
-		return;
+		[=](vector<pair<int, int>> move) { return move == n_move; })) {
+
+		return false;
 	}
 
 	set<pair<int, int>> &hunterCheck = turn ? white : black, &hunterQueen = turn ? q_white : q_black;
@@ -535,6 +459,8 @@ void Deck::isValidMove() {
 		hunterQueen.erase(firstField);
 		hunterQueen.insert(lastField);
 	}
+
+	return true;
 }
 
 

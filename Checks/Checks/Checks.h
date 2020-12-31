@@ -8,6 +8,10 @@ using std::cin;
 using std::cout;
 using std::endl;
 
+struct Position {
+	set<pair<int, int>> whiteCheck, blackCheck, whiteQueen, blackQueen;
+};
+
 class Deck {
 
 	// White square, black square, white check, black check, white queen, black queen
@@ -28,6 +32,8 @@ class Deck {
 public:
 	Deck();
 	void printDeck();
+	void printMove(const vector<pair<int, int>>& move);
+	void printMoveOptions(const vector<vector<pair<int, int>>>& options);
 	void directionOffsets(direction dir, int& x_off, int& y_off);
 	vector<pair<int, int>> isValidRecord(const string& s);
 
@@ -59,15 +65,6 @@ public:
 		vector<pair<int, int>>& eat_queue,
 		vector<pair<int, int>>& eat_step_queue
 	);
-/*
-	vector<pair<int, int>> canQueenEatThisDirection(
-		set<pair<int, int>>& hunter,
-		set<pair<int, int>>& prey,
-		pair<int, int>& killer,
-		vector<pair<int, int>>& eat_queue,
-		direction dir
-	);
-*/
 	void canQueenEatFurther(
 		set<pair<int, int>>& hunter,
 		set<pair<int, int>>& prey,
@@ -79,7 +76,7 @@ public:
 	bool isValidEat();
 	void canMoveThisDirection(pair<int, int> figure, direction dir);
 	void possibleMoves();
-	void isValidMove();
+	bool isValidMove();
 
 	void prototype() {
 		turn = true;
@@ -89,7 +86,7 @@ public:
 			possibleMoves();
 		}
 		while (true) {
-			cout << "Enter yours move:" << endl;
+			cout << "Enter your move:" << endl;
 			cin >> s_move;
 			n_move = isValidRecord(s_move);
 			if (n_move.empty()) {
@@ -112,17 +109,24 @@ public:
 	void playTheGame() {
 
 		turn = true;
-		int i = 3;
-		while (--i) {
-			string s_move;
-			cin >> s_move;
+		string s_move;
+		mustEat();
+		if (must_eat.empty()) {
+			possibleMoves();
+			printMoveOptions(moves);
+		}
+		else {
+			printMoveOptions(must_eat);
+		}
 
-			vector<pair<int, int>> n_move = isValidRecord(s_move);
+		while (true) {
+			cout << "Enter your move:" << endl;
+			cin >> s_move;
+			n_move = isValidRecord(s_move);
 			if (n_move.empty()) {
 				cout << "Invalid move notation!" << endl;
 				continue;
 			}
-			mustEat();
 			if (!must_eat.empty()) {
 				if (!isValidEat()) {
 					cout << "Invalid move! You must eat this turn!" << endl;
@@ -130,13 +134,28 @@ public:
 				}
 			}
 			else {
-				possibleMoves();
-				isValidMove();
+				if (!isValidMove()) {
+					cout << "Invalid move!" << endl;
+					continue;
+				}
 			}
 			printDeck();
 
 			turn = !turn;
+			mustEat();
+			if (must_eat.empty()) {
+				possibleMoves();
+				printMoveOptions(moves);
+				if (moves.empty()) {
+					break;
+				}
+			}
+			else {
+				printMoveOptions(must_eat);
+				printMoveOptions(eatens);
+			}
 		}
+
 		if (turn) cout << "BLACK WINS!!!";
 		else cout << "WHITE WINS!!!";
 	}
