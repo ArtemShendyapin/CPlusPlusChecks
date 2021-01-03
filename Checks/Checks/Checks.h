@@ -9,24 +9,24 @@ using std::cout;
 using std::endl;
 
 struct Position {
-	set<pair<int, int>> whiteCheck, blackCheck, whiteQueen, blackQueen;
+	set<pair<int, int>> white_checksCheck, black_checksCheck, white_checksQueen, black_checksQueen;
 };
 
 class Deck {
 
-	// White square, black square, white check, black check, white queen, black queen
+	// white_checks square, black_checks square, white_checks check, black_checks check, white_checks queen, black_checks queen
 	enum square { w_s, b_s, w_c, b_c, w_q, b_q };
 	enum direction { up_right, up_left, down_right, down_left };
-	const int row_num = 8, col_num = 8, checks_num = 12;
+	const int row_num = 8, col_num = 8;
 
 	bool turn;
 
-	set<pair<int, int>> white;
-	set<pair<int, int>> black;
-	set<pair<int, int>> q_white;
-	set<pair<int, int>> q_black;
+	set<pair<int, int>> white_checks;
+	set<pair<int, int>> black_checks;
+	set<pair<int, int>> white_queens;
+	set<pair<int, int>> black_queens;
 	vector<vector<square>> desk;
-	vector<pair<int, int>> n_move;
+	vector<pair<int, int>> notation_move;
 	vector<vector<pair<int, int>>> must_eat, eatens, moves;
 
 public:
@@ -80,16 +80,16 @@ public:
 
 	void prototype() {
 		turn = true;
-		string s_move;
+		string string_move;
 		mustEat();
 		if (must_eat.empty()) {
 			possibleMoves();
 		}
 		while (true) {
 			cout << "Enter your move:" << endl;
-			cin >> s_move;
-			n_move = isValidRecord(s_move);
-			if (n_move.empty()) {
+			cin >> string_move;
+			notation_move = isValidRecord(string_move);
+			if (notation_move.empty()) {
 				cout << "Invalid move notation!" << endl;
 				continue;
 			}
@@ -109,7 +109,7 @@ public:
 	void playTheGame() {
 
 		turn = true;
-		string s_move;
+		string string_move;
 		mustEat();
 		if (must_eat.empty()) {
 			possibleMoves();
@@ -121,9 +121,9 @@ public:
 
 		while (true) {
 			cout << "Enter your move:" << endl;
-			cin >> s_move;
-			n_move = isValidRecord(s_move);
-			if (n_move.empty()) {
+			cin >> string_move;
+			notation_move = isValidRecord(string_move);
+			if (notation_move.empty()) {
 				cout << "Invalid move notation!" << endl;
 				continue;
 			}

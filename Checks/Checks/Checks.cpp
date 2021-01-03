@@ -18,17 +18,17 @@ Deck::Deck() {
 	// Add checks coordinates
 	for (int i = 0; i < 3; ++i) {
 		for (int j = 0; j < 4; ++j) {
-			white.insert({ i, i % 2 + j * 2 });
-			black.insert({ row_num - 1 - i, (i + 1) % 2 + j * 2 });
+			white_checks.insert({ i, i % 2 + j * 2 });
+			black_checks.insert({ row_num - 1 - i, (i + 1) % 2 + j * 2 });
 		}
 	}
 /*
-	//white = {{0, 2}};
-	//black = {{1, 1}, {1, 3}, {3, 1}, {3, 3}, {3, 5}};
-	//black = {{1, 1}, {1, 3}};
-	white = {};
-	q_white = { { 2, 6 } };
-	black = { { 1, 5 },{ 3, 5 },{ 1, 3 },{ 3, 3 } };
+	//white_checks = {{0, 2}};
+	//black_checks = {{1, 1}, {1, 3}, {3, 1}, {3, 3}, {3, 5}};
+	//black_checks = {{1, 1}, {1, 3}};
+	white_checks = {};
+	white_queens = { { 2, 6 } };
+	black_checks = { { 1, 5 },{ 3, 5 },{ 1, 3 },{ 3, 3 } };
 */
 	// Fill the field
 	for (int i = 0; i < row_num; ++i) {
@@ -41,10 +41,10 @@ Deck::Deck() {
 	}
 
 	// Add checks on field
-	for (auto check : white) {
+	for (auto check : white_checks) {
 		desk[check.first][check.second] = w_c;
 	}
-	for (auto check : black) {
+	for (auto check : black_checks) {
 		desk[check.first][check.second] = b_c;
 	}
 }
@@ -62,16 +62,16 @@ void Deck::printDeck() {
 	}
 
 	// Add checks on field
-	for (auto check : white) {
+	for (auto check : white_checks) {
 		desk[check.first][check.second] = w_c;
 	}
-	for (auto check : black) {
+	for (auto check : black_checks) {
 		desk[check.first][check.second] = b_c;
 	}
-	for (auto check : q_white) {
+	for (auto check : white_queens) {
 		desk[check.first][check.second] = w_q;
 	}
-	for (auto check : q_black) {
+	for (auto check : black_queens) {
 		desk[check.first][check.second] = b_q;
 	}
 
@@ -247,12 +247,12 @@ void Deck::canCheckEatFurther(
 
 	vector<pair<int, int>> canEat;
 	bool isSomethingToEat = false;
-	int dirColor = 0;
+	int dir_color = 0;
 	if (turn == false) {
-		dirColor = 2;
+		dir_color = 2;
 	}
-	for (int dirInt = dirColor; dirInt < dirColor+2; ++dirInt) {
-		direction dir = static_cast<direction>(dirInt);
+	for (int dir_int = dir_color; dir_int < dir_color+2; ++dir_int) {
+		direction dir = static_cast<direction>(dir_int);
 		canEat = canEatThisDirection(hunter, prey, killer, eat_queue, dir);
 		if (!canEat.empty()) {
 			isSomethingToEat = true;
@@ -271,9 +271,6 @@ void Deck::canCheckEatFurther(
 
 	if (!isSomethingToEat && !eat_queue.empty()) {
 		must_eat.push_back(eat_step_queue);
-		cout << "isSomethingToEat=" << isSomethingToEat << endl;
-		printMove(eat_step_queue);
-		cout << endl;
 		eatens.push_back(eat_queue);
 	}
 }
@@ -292,8 +289,8 @@ void Deck::canQueenEatFurther(
 	}
 	vector<pair<int, int>> canEat;
 	bool isSomethingToEat = false;
-	for (int dirInt = 0; dirInt < 4; ++dirInt) {
-		direction dir = static_cast<direction>(dirInt);
+	for (int dir_int = 0; dir_int < 4; ++dir_int) {
+		direction dir = static_cast<direction>(dir_int);
 		canEat = canEatThisDirection(hunter, prey, killer, eat_queue, dir);
 		if (!canEat.empty()) {
 			isSomethingToEat = true;
@@ -328,27 +325,27 @@ void Deck::mustEat() {
 
 	must_eat.clear();
 	eatens.clear();
-	set<pair<int, int>> const_hunter, const_hunter_q, hunter, prey;
+	set<pair<int, int>> const_hunter_check, const_hunter_queen, hunter, prey;
 	set<pair<int, int>>::iterator it;
 	if (turn) {
-		hunter = set_union(white, q_white);
-		prey = set_union(black, q_black);
-		const_hunter = white;
-		const_hunter_q = q_white;
+		hunter = set_union(white_checks, white_queens);
+		prey = set_union(black_checks, black_queens);
+		const_hunter_check = white_checks;
+		const_hunter_queen = white_queens;
 	}
 	else {
-		hunter = set_union(black, q_black);
-		prey = set_union(white, q_white);
-		const_hunter = black;
-		const_hunter_q = q_black;
+		hunter = set_union(black_checks, black_queens);
+		prey = set_union(white_checks, white_queens);
+		const_hunter_check = black_checks;
+		const_hunter_queen = black_queens;
 	}
 
-	for (auto check : const_hunter) {
+	for (auto check : const_hunter_check) {
 
 		vector<pair<int, int>> eat_queue, eat_step_queue;
 		canCheckEatFurther(hunter, prey, check, eat_queue, eat_step_queue);
 	}
-	for (auto check : const_hunter_q) {
+	for (auto check : const_hunter_queen) {
 
 		vector<pair<int, int>> eat_queue, eat_step_queue;
 		canQueenEatFurther(hunter, prey, check, eat_queue, eat_step_queue);
@@ -359,41 +356,43 @@ bool Deck::isValidEat() {
 
 	int eatInd = -1;
 	for (int i = 0; i < must_eat.size(); ++i) {
-		if (must_eat[i] == n_move) {
+		if (must_eat[i] == notation_move) {
 			eatInd = i;
 			break;
 		}
 	}
 	if (eatInd == -1) return false;
 
-	set<pair<int, int>> &hunterCheck = turn ? white : black, &hunterQueen = turn ? q_white : q_black;
-	set<pair<int, int>> &preyCheck = turn ? black : white, &preyQueen = turn ? q_black : q_white;
+	set<pair<int, int>> &hunter_check = turn ? white_checks : black_checks;
+	set<pair<int, int>> &hunter_queen = turn ? white_queens : black_queens;
+	set<pair<int, int>> &prey_check = turn ? black_checks : white_checks;
+	set<pair<int, int>> &prey_queen = turn ? black_queens : white_queens;
 
-	pair<int, int> firstField = must_eat[eatInd].front(), lastField = must_eat[eatInd].back();
-	if (hunterCheck.find(firstField) != hunterCheck.end()) {
-		hunterCheck.erase(firstField);
-		if (lastField.first == 0 || lastField.first == row_num - 1) {
-			hunterQueen.insert(lastField);
+	pair<int, int> first_field = must_eat[eatInd].front(), last_field = must_eat[eatInd].back();
+	if (hunter_check.find(first_field) != hunter_check.end()) {
+		hunter_check.erase(first_field);
+		if (last_field.first == 0 || last_field.first == row_num - 1) {
+			hunter_queen.insert(last_field);
 		}
 		else
 		{
-			hunterCheck.insert(lastField);
+			hunter_check.insert(last_field);
 		}
 	}
 	else
 	{
-		hunterQueen.erase(firstField);
-		hunterQueen.insert(lastField);
+		hunter_queen.erase(first_field);
+		hunter_queen.insert(last_field);
 	}
 
 	vector<pair<int, int>> eatenFigures = eatens[eatInd];
 	for (auto figure : eatenFigures) {
-		if (preyCheck.find(figure) != preyCheck.end()) {
-			preyCheck.erase(figure);
+		if (prey_check.find(figure) != prey_check.end()) {
+			prey_check.erase(figure);
 		}
 		else 
 		{
-			preyQueen.erase(figure);
+			prey_queen.erase(figure);
 		}
 	}
 	return true;
@@ -405,10 +404,10 @@ void Deck::canMoveThisDirection(pair<int, int> figure, direction dir) {
 	directionOffsets(dir, x_off, y_off);
 	pair<int, int> step = { x + x_off, y + y_off };
 	if (isFieldWithinDeck(step) &&
-		white.find(step) == white.end() &&
-		black.find(step) == black.end() &&
-		q_white.find(step) == q_white.end() &&
-		q_black.find(step) == q_black.end()) {
+		white_checks.find(step) == white_checks.end() &&
+		black_checks.find(step) == black_checks.end() &&
+		white_queens.find(step) == white_queens.end() &&
+		black_queens.find(step) == black_queens.end()) {
 		
 		moves.push_back({ figure, step });
 	}
@@ -417,21 +416,21 @@ void Deck::canMoveThisDirection(pair<int, int> figure, direction dir) {
 void Deck::possibleMoves() {
 
 	moves.clear();
-	set<pair<int, int>> &hunterChecks = turn ? white : black;
-	set<pair<int, int>> &hunterQueens = turn ? q_white : q_black;
-	for (auto figure : hunterChecks) {
-		int dirColor = 0;
+	set<pair<int, int>> &hunter_checks = turn ? white_checks : black_checks;
+	set<pair<int, int>> &hunter_queens = turn ? white_queens : black_queens;
+	for (auto figure : hunter_checks) {
+		int dir_color = 0;
 		if (turn == false) {
-			dirColor = 2;
+			dir_color = 2;
 		}
-		for (int dirInt = dirColor; dirInt < dirColor + 2; ++dirInt) {
-			direction dir = static_cast<direction>(dirInt);
+		for (int dir_int = dir_color; dir_int < dir_color + 2; ++dir_int) {
+			direction dir = static_cast<direction>(dir_int);
 			canMoveThisDirection(figure, dir);
 		}
 	}
-	for (auto figure : hunterQueens) {
-		for (int dirInt = 0; dirInt < 4; ++dirInt) {
-			direction dir = static_cast<direction>(dirInt);
+	for (auto figure : hunter_queens) {
+		for (int dir_int = 0; dir_int < 4; ++dir_int) {
+			direction dir = static_cast<direction>(dir_int);
 			canMoveThisDirection(figure, dir);
 		}
 	}
@@ -439,25 +438,26 @@ void Deck::possibleMoves() {
 
 bool Deck::isValidMove() {
 	if (!any_of(moves.begin(), moves.end(),
-		[=](vector<pair<int, int>> move) { return move == n_move; })) {
+		[=](vector<pair<int, int>> move) { return move == notation_move; })) {
 
 		return false;
 	}
 
-	set<pair<int, int>> &hunterCheck = turn ? white : black, &hunterQueen = turn ? q_white : q_black;
-	pair<int, int> firstField = n_move.front(), lastField = n_move.back();
-	if (hunterCheck.find(firstField) != hunterCheck.end()) {
-		hunterCheck.erase(firstField);
-		if (lastField.first == 0 || lastField.first == row_num - 1) {
-			hunterQueen.insert(lastField);
+	set<pair<int, int>> &hunter_check = turn ? white_checks : black_checks;
+	set<pair<int, int>> &hunter_queen = turn ? white_queens : black_queens;
+	pair<int, int> first_field = notation_move.front(), last_field = notation_move.back();
+	if (hunter_check.find(first_field) != hunter_check.end()) {
+		hunter_check.erase(first_field);
+		if (last_field.first == 0 || last_field.first == row_num - 1) {
+			hunter_queen.insert(last_field);
 		}
 		else {
-			hunterCheck.insert(lastField);
+			hunter_check.insert(last_field);
 		}
 	}
 	else {
-		hunterQueen.erase(firstField);
-		hunterQueen.insert(lastField);
+		hunter_queen.erase(first_field);
+		hunter_queen.insert(last_field);
 	}
 
 	return true;
