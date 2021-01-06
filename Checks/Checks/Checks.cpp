@@ -9,82 +9,59 @@ using std::vector;
 using std::pair;
 using std::set;
 using std::string;
+using std::to_string;
 using std::cin;
 using std::cout;
 using std::endl;
 
 Deck::Deck() {
 
-	// Add checks coordinates
-	for (int i = 0; i < 3; ++i) {
-		for (int j = 0; j < 4; ++j) {
-			white_checks.insert({ i, i % 2 + j * 2 });
-			black_checks.insert({ row_num - 1 - i, (i + 1) % 2 + j * 2 });
-		}
-	}
-/*
-	//white_checks = {{0, 2}};
-	//black_checks = {{1, 1}, {1, 3}, {3, 1}, {3, 3}, {3, 5}};
-	//black_checks = {{1, 1}, {1, 3}};
-	white_checks = {};
-	white_queens = { { 2, 6 } };
-	black_checks = { { 1, 5 },{ 3, 5 },{ 1, 3 },{ 3, 3 } };
-*/
 	// Fill the field
+	turn = true;
 	for (int i = 0; i < row_num; ++i) {
 		vector<square> row(col_num);
 		for (int j = 0; j < col_num; ++j) {
-			if ((i + j) % 2 == 0) row[j] = w_s;
-			else row[j] = b_s;
+			if ((i + j) % 2 == 0) row[j] = b_s;
+			else row[j] = w_s;
 		}
 		desk.push_back(row);
 	}
+	for (int i = 0; i < 3; ++i) {
+		for (int j = 0; j < 4; ++j) {
+			desk[i][i % 2 + j * 2] = w_c;
+			desk[row_num - 1 - i][(i + 1) % 2 + j * 2] = b_c;
+		}
+	}
+}
 
-	// Add checks on field
-	for (auto check : white_checks) {
-		desk[check.first][check.second] = w_c;
+Deck::Deck(Position position) {
+	turn = position.turn;
+	for (int i = 0; i < row_num; ++i) {
+		vector<square> row(col_num);
+		for (int j = 0; j < col_num; ++j) {
+			if ((i + j) % 2 == 0) row[j] = b_s;
+			else row[j] = w_s;
+		}
+		desk.push_back(row);
 	}
-	for (auto check : black_checks) {
-		desk[check.first][check.second] = b_c;
-	}
+	for (auto check : position.white_checks) desk[check[1] - '1'][check[0] - 'a'] = w_c;
+	for (auto check : position.black_checks) desk[check[1] - '1'][check[0] - 'a'] = b_c;
+	for (auto check : position.white_queens) desk[check[1] - '1'][check[0] - 'a'] = w_q;
+	for (auto check : position.black_queens) desk[check[1] - '1'][check[0] - 'a'] = b_q;
 }
 
 void Deck::printDeck() {
 
-	desk.clear();
-	for (int i = 0; i < row_num; ++i) {
-		vector<square> row(col_num);
-		for (int j = 0; j < col_num; ++j) {
-			if ((i + j) % 2 == 0) row[j] = w_s;
-			else row[j] = b_s;
-		}
-		desk.push_back(row);
-	}
-
-	// Add checks on field
-	for (auto check : white_checks) {
-		desk[check.first][check.second] = w_c;
-	}
-	for (auto check : black_checks) {
-		desk[check.first][check.second] = b_c;
-	}
-	for (auto check : white_queens) {
-		desk[check.first][check.second] = w_q;
-	}
-	for (auto check : black_queens) {
-		desk[check.first][check.second] = b_q;
-	}
-
 	cout << "  ABCDEFGH" << endl;
 
-	for (int i = row_num - 1; i >= 0; --i) {
-		cout << i + 1 << " ";
-		for (int j = 0; j < col_num; ++j) {
-			switch (desk[i][j]) {
-			case w_s:
+	for (int row = row_num - 1; row >= 0; --row) {
+		cout << row + 1 << " ";
+		for (int col = 0; col < col_num; ++col) {
+			switch (desk[row][col]) {
+			case b_s:
 				cout << ' ';
 				break;
-			case b_s:
+			case w_s:
 				cout << char(219);
 				break;
 			case w_c:
@@ -105,46 +82,48 @@ void Deck::printDeck() {
 	}
 }
 
-void Deck::printMove(const vector<pair<int, int>>& move) {
-	for (int i = 0; i < move.size() - 1; ++i) {
-		cout << char('a' + move[i].second) << move[i].first + 1 << "-";
+string Deck::moveToString(const Move &move) {
+	string rez = "";
+	for (int i = 0; i < move.notation.size() - 1; ++i) {
+		pair<int, int> coords = move.notation[i];
+		rez += char('a' + coords.second) + to_string(coords.first + 1) + "-";
 	}
-	cout << char('a' + move.back().second) << move.back().first + 1;
+	rez += char('a' + move.notation.back().second) + to_string(move.notation.back().first + 1);
+	return rez;
 }
 
-void Deck::printMoveOptions(const vector<vector<pair<int, int>>>& options) {
-	if (options.empty()) return;
-	cout << "Move options:" << endl;
+string Deck::moveOptionsToString(const vector<Move> &options) {
+	string rez = "Move options: ";
+	if (options.empty()) return rez;
 	for (int i = 0; i < options.size() - 1; ++i) {
-		printMove(options[i]);
-		cout << ", ";
+		rez += moveToString(options[i]) + ", ";
 	}
-	printMove(options.back());
-	cout << endl;
+	rez += moveToString(options.back());
+	return rez;
 }
 
 
-vector<pair<int, int>> Deck::isValidRecord(const string& s) {
+Move Deck::isValidRecord(const string& s) {
 
-	vector<pair<int, int>> rez, no_ans;
+	Move rez, no_ans;
 
 	int row = 0, col = 0;
 	if (s.size() % 3 != 2) return no_ans;
 	for (int i = 0; i < s.size(); ++i) {
 		if (i % 3 == 0) {
-			if (s[i] < 'a' || s[i] > 'h') return no_ans;
 			row = s[i] - 'a';
+			if (row < 0 || row > row_num - 1) return no_ans;
 		}
 		if (i % 3 == 1) {
-			if (s[i] < '1' || s[i] > '8') return no_ans;
 			col = s[i] - '1';
+			if (col < 0 || col > col_num - 1) return no_ans;
 		}
 		if (i % 3 == 2) {
 			if (s[i] != '-') return no_ans;
-			rez.push_back({ col, row });
+			rez.notation.push_back({ col, row });
 		}
 	}
-	rez.push_back({ col, row });
+	rez.notation.push_back({ col, row });
 	return rez;
 }
 
@@ -178,37 +157,33 @@ bool Deck::isFieldWithinDeck(pair<int, int> field) {
 
 bool Deck::isPreyOnField(
 	pair<int, int> field,
-	set<pair<int, int>>& hunter,
-	set<pair<int, int>>& prey,
-	vector<pair<int, int>>& eat_queue
+	pair<square, square> prey,
+	Move &eat_step_queue
 )
 {
-	if (prey.find(field) != prey.end() &&
-		!any_of(eat_queue.begin(), eat_queue.end(),
-			[field](pair<int, int> el) { return el == field; }) &&
-		hunter.find(field) == hunter.end()) return true;
+	if ((desk[field.first][field.second] == prey.first ||
+		desk[field.first][field.second] == prey.second) &&
+		!any_of(eat_step_queue.eaten.begin(), eat_step_queue.eaten.end(),
+			[field](Eaten el) { return el.coords == field; })) return true;
 	return false;
 }
 
-bool Deck::isNextFieldFree(
-	pair<int, int> field,
-	set<pair<int, int>>& hunter,
-	set<pair<int, int>>& prey,
-	vector<pair<int, int>>& eat_queue
-)
+bool Deck::isNextFieldFree(pair<int, int> field)
 {
-	if (prey.find(field) == prey.end() &&
-		!any_of(eat_queue.begin(), eat_queue.end(),
-			[field](pair<int, int> el) { return el == field; }) &&
-		hunter.find(field) == hunter.end()) return true;
+	if (desk[field.first][field.second] == b_s) return true;
 	return false;
 }
 
-vector<pair<int, int>> Deck::canEatThisDirection(
-	set<pair<int, int>>& hunter,
-	set<pair<int, int>>& prey,
-	pair<int, int>& killer,
-	vector<pair<int, int>>& eat_queue,
+void Deck::moveFigure(pair<int, int> killer, pair<int, int> field, square figure) {
+	desk[field.first][field.second] = figure;
+	desk[killer.first][killer.second] = b_s;
+}
+
+bool Deck::canEatThisDirection(
+	const pair<square, square> &hunter,
+	const pair<square, square> &prey,
+	pair<int, int> &killer,
+	Move &eat_step_queue,
 	direction dir
 )
 {
@@ -216,36 +191,35 @@ vector<pair<int, int>> Deck::canEatThisDirection(
 	int x_off, y_off;
 	directionOffsets(dir, x_off, y_off);
 
-	vector<pair<int, int>> rez;
 	// Current field that we check to find a check that can be eaten
 	pair<int, int> step = { x + x_off, y + y_off };
 	// Field after that field on same direction
 	pair<int, int> overstep = { x + x_off + x_off, y + y_off + y_off };
 	if (isFieldWithinDeck(overstep) &&
-		isPreyOnField(step, hunter, prey, eat_queue) &&
-		isNextFieldFree(overstep, hunter, prey, eat_queue)) {
+		isPreyOnField(step, prey, eat_step_queue) &&
+		isNextFieldFree(overstep)) {
 
-		rez.push_back(overstep);
-		eat_queue.push_back(step);
+		if (desk[x][y] == w_c && overstep.first == row_num - 1 ||
+			desk[x][y] == b_c && overstep.first == 0) {
+			eat_step_queue.checkToQueen = true;
+		}
+		eat_step_queue.notation.push_back(overstep);
+		Eaten eaten;
+		eaten.figure = desk[step.first][step.second];
+		eaten.coords = step;
+		eat_step_queue.eaten.push_back(eaten);
+		return true;
 	}
-	
-	return rez;
+	return false;
 }
 
 void Deck::canCheckEatFurther(
-	set<pair<int, int>>& hunter,
-	set<pair<int, int>>& prey,
-	pair<int, int>& killer,
-	vector<pair<int, int>>& eat_queue,
-	vector<pair<int, int>>& eat_step_queue
+	const pair<square, square> &hunter,
+	const pair<square, square> &prey,
+	pair<int, int> &killer,
+	Move &eat_step_queue
 )
 {
-	// If it is the first eating, need to add start position
-	if (eat_step_queue.empty()) {
-		eat_step_queue.push_back(killer);
-	}
-
-	vector<pair<int, int>> canEat;
 	bool isSomethingToEat = false;
 	int dir_color = 0;
 	if (turn == false) {
@@ -253,149 +227,87 @@ void Deck::canCheckEatFurther(
 	}
 	for (int dir_int = dir_color; dir_int < dir_color+2; ++dir_int) {
 		direction dir = static_cast<direction>(dir_int);
-		canEat = canEatThisDirection(hunter, prey, killer, eat_queue, dir);
-		if (!canEat.empty()) {
+		if (canEatThisDirection(hunter, prey, killer, eat_step_queue, dir)) {
 			isSomethingToEat = true;
-			for (auto field : canEat) {
-				hunter.erase({ killer.first, killer.second });
-				hunter.insert({ field.first, field.second });
-				eat_step_queue.push_back({ field.first, field.second });
-				canCheckEatFurther(hunter, prey, field, eat_queue, eat_step_queue);
-				hunter.insert({ killer.first, killer.second });
-				hunter.erase({ field.first, field.second });
-				eat_step_queue.pop_back();
-			}
-			eat_queue.pop_back();
+			pair<int, int> field = eat_step_queue.notation.back();
+			moveFigure(killer, field, hunter.first);
+			canCheckEatFurther(hunter, prey, field, eat_step_queue);
+			moveFigure(field, killer, hunter.first);
+			eat_step_queue.notation.pop_back();
+			eat_step_queue.eaten.pop_back();
 		}
 	}
 
-	if (!isSomethingToEat && !eat_queue.empty()) {
-		must_eat.push_back(eat_step_queue);
-		eatens.push_back(eat_queue);
+	if (!isSomethingToEat && !eat_step_queue.eaten.empty()) {
+		move_options.push_back(eat_step_queue);
 	}
 }
 
 void Deck::canQueenEatFurther(
-	set<pair<int, int>>& hunter,
-	set<pair<int, int>>& prey,
-	pair<int, int>& killer,
-	vector<pair<int, int>>& eat_queue,
-	vector<pair<int, int>>& eat_step_queue
+	const pair<square, square> &hunter,
+	const pair<square, square> &prey,
+	pair<int, int> &killer,
+	Move &eat_step_queue
 )
 {
-	// If it is the first eating, need to add start position
-	if (eat_step_queue.empty()) {
-		eat_step_queue.push_back(killer);
-	}
 	vector<pair<int, int>> canEat;
 	bool isSomethingToEat = false;
 	for (int dir_int = 0; dir_int < 4; ++dir_int) {
 		direction dir = static_cast<direction>(dir_int);
-		canEat = canEatThisDirection(hunter, prey, killer, eat_queue, dir);
-		if (!canEat.empty()) {
+		if (canEatThisDirection(hunter, prey, killer, eat_step_queue, dir)) {
 			isSomethingToEat = true;
-			for (auto field : canEat) {
-				hunter.erase({ killer.first, killer.second });
-				hunter.insert({ field.first, field.second });
-				eat_step_queue.push_back({ field.first, field.second });
-				canQueenEatFurther(hunter, prey, field, eat_queue, eat_step_queue);
-				hunter.insert({ killer.first, killer.second });
-				hunter.erase({ field.first, field.second });
-				eat_step_queue.pop_back();
-			}
-			eat_queue.pop_back();
+			pair<int, int> field = eat_step_queue.notation.back();
+			moveFigure(killer, field, hunter.second);
+			canQueenEatFurther(hunter, prey, field, eat_step_queue);
+			moveFigure(field, killer, hunter.second);
+			eat_step_queue.notation.pop_back();
+			eat_step_queue.eaten.pop_back();
 		}
 	}
 
-	if (!isSomethingToEat && !eat_queue.empty()) {
-		must_eat.push_back(eat_step_queue);
-		eatens.push_back(eat_queue);
+	if (!isSomethingToEat && !eat_step_queue.eaten.empty()) {
+		move_options.push_back(eat_step_queue);
 	}
 }
 
-set<pair<int, int>> set_union(set<pair<int, int>>& a, set<pair<int, int>>& b) {
-	set<pair<int, int>> rez = a;
-	for (auto el : b) {
-		rez.insert(el);
-	}
-	return rez;
-}
+void Deck::findEatOptions() {
 
-void Deck::mustEat() {
+	move_options.clear();
 
-	must_eat.clear();
-	eatens.clear();
-	set<pair<int, int>> const_hunter_check, const_hunter_queen, hunter, prey;
-	set<pair<int, int>>::iterator it;
+	pair<square, square> hunter, prey;
 	if (turn) {
-		hunter = set_union(white_checks, white_queens);
-		prey = set_union(black_checks, black_queens);
-		const_hunter_check = white_checks;
-		const_hunter_queen = white_queens;
+		hunter = { w_c, w_q };
+		prey = { b_c, b_q };
 	}
 	else {
-		hunter = set_union(black_checks, black_queens);
-		prey = set_union(white_checks, white_queens);
-		const_hunter_check = black_checks;
-		const_hunter_queen = black_queens;
+		hunter = { b_c, b_q };
+		prey = { w_c, w_q };
 	}
-
-	for (auto check : const_hunter_check) {
-
-		vector<pair<int, int>> eat_queue, eat_step_queue;
-		canCheckEatFurther(hunter, prey, check, eat_queue, eat_step_queue);
-	}
-	for (auto check : const_hunter_queen) {
-
-		vector<pair<int, int>> eat_queue, eat_step_queue;
-		canQueenEatFurther(hunter, prey, check, eat_queue, eat_step_queue);
+	for (int row = 0; row < row_num; ++row) {
+		for (int col = row % 2; col < col_num; col += 2) {
+			pair<int, int> field = { row, col };
+			Move eat_step_queue;
+			eat_step_queue.checkToQueen = false;
+			eat_step_queue.notation.push_back(field);
+			if (desk[row][col] == hunter.first) {
+				canCheckEatFurther(hunter, prey, field, eat_step_queue);
+			}
+			else if (desk[row][col] == hunter.second) {
+				canQueenEatFurther(hunter, prey, field, eat_step_queue);
+			}
+		}
 	}
 }
 
-bool Deck::isValidEat() {
+bool Deck::isValidMove(Move move, int &ind) {
 
-	int eatInd = -1;
-	for (int i = 0; i < must_eat.size(); ++i) {
-		if (must_eat[i] == notation_move) {
-			eatInd = i;
-			break;
+	for (int i = 0; i < move_options.size(); ++i) {
+		if (move_options[i].notation == move.notation) {
+			ind = i;
+			return true;
 		}
 	}
-	if (eatInd == -1) return false;
-
-	set<pair<int, int>> &hunter_check = turn ? white_checks : black_checks;
-	set<pair<int, int>> &hunter_queen = turn ? white_queens : black_queens;
-	set<pair<int, int>> &prey_check = turn ? black_checks : white_checks;
-	set<pair<int, int>> &prey_queen = turn ? black_queens : white_queens;
-
-	pair<int, int> first_field = must_eat[eatInd].front(), last_field = must_eat[eatInd].back();
-	if (hunter_check.find(first_field) != hunter_check.end()) {
-		hunter_check.erase(first_field);
-		if (last_field.first == 0 || last_field.first == row_num - 1) {
-			hunter_queen.insert(last_field);
-		}
-		else
-		{
-			hunter_check.insert(last_field);
-		}
-	}
-	else
-	{
-		hunter_queen.erase(first_field);
-		hunter_queen.insert(last_field);
-	}
-
-	vector<pair<int, int>> eatenFigures = eatens[eatInd];
-	for (auto figure : eatenFigures) {
-		if (prey_check.find(figure) != prey_check.end()) {
-			prey_check.erase(figure);
-		}
-		else 
-		{
-			prey_queen.erase(figure);
-		}
-	}
-	return true;
+	return false;
 }
 
 void Deck::canMoveThisDirection(pair<int, int> figure, direction dir) {
@@ -403,74 +315,164 @@ void Deck::canMoveThisDirection(pair<int, int> figure, direction dir) {
 	int x_off, y_off;
 	directionOffsets(dir, x_off, y_off);
 	pair<int, int> step = { x + x_off, y + y_off };
-	if (isFieldWithinDeck(step) &&
-		white_checks.find(step) == white_checks.end() &&
-		black_checks.find(step) == black_checks.end() &&
-		white_queens.find(step) == white_queens.end() &&
-		black_queens.find(step) == black_queens.end()) {
+	if (isFieldWithinDeck(step) && desk[step.first][step.second] == b_s) {
 		
-		moves.push_back({ figure, step });
-	}
-}
-
-void Deck::possibleMoves() {
-
-	moves.clear();
-	set<pair<int, int>> &hunter_checks = turn ? white_checks : black_checks;
-	set<pair<int, int>> &hunter_queens = turn ? white_queens : black_queens;
-	for (auto figure : hunter_checks) {
-		int dir_color = 0;
-		if (turn == false) {
-			dir_color = 2;
-		}
-		for (int dir_int = dir_color; dir_int < dir_color + 2; ++dir_int) {
-			direction dir = static_cast<direction>(dir_int);
-			canMoveThisDirection(figure, dir);
-		}
-	}
-	for (auto figure : hunter_queens) {
-		for (int dir_int = 0; dir_int < 4; ++dir_int) {
-			direction dir = static_cast<direction>(dir_int);
-			canMoveThisDirection(figure, dir);
-		}
-	}
-}
-
-bool Deck::isValidMove() {
-	if (!any_of(moves.begin(), moves.end(),
-		[=](vector<pair<int, int>> move) { return move == notation_move; })) {
-
-		return false;
-	}
-
-	set<pair<int, int>> &hunter_check = turn ? white_checks : black_checks;
-	set<pair<int, int>> &hunter_queen = turn ? white_queens : black_queens;
-	pair<int, int> first_field = notation_move.front(), last_field = notation_move.back();
-	if (hunter_check.find(first_field) != hunter_check.end()) {
-		hunter_check.erase(first_field);
-		if (last_field.first == 0 || last_field.first == row_num - 1) {
-			hunter_queen.insert(last_field);
+		Move move;
+		if (desk[x][y] == w_c && step.first == row_num - 1 ||
+			desk[x][y] == b_c && step.first == 0) {
+			move.checkToQueen = true;
 		}
 		else {
-			hunter_check.insert(last_field);
+			move.checkToQueen = false;
+		}
+		move.notation = { figure, step };
+		move_options.push_back(move);
+	}
+}
+
+void Deck::findMoveOptions() {
+
+	move_options.clear();
+
+	square hunter_check = turn ? w_c : b_c;
+	square hunter_queen = turn ? w_q : b_q;
+	int dir_color = 0;
+	if (turn == false) {
+		dir_color = 2;
+	}
+	for (int row = 0; row < row_num; ++row) {
+		for (int col = row % 2; col < col_num; ++col) {
+			if (desk[row][col] == hunter_check) {
+				pair<int, int> figure = { row, col };
+				for (int dir_int = dir_color; dir_int < dir_color + 2; ++dir_int) {
+					direction dir = static_cast<direction>(dir_int);
+					canMoveThisDirection(figure, dir);
+				}
+			}
+			else if (desk[row][col] == hunter_queen) {
+				pair<int, int> figure = { row, col };
+				for (int dir_int = 0; dir_int < 4; ++dir_int) {
+					direction dir = static_cast<direction>(dir_int);
+					canMoveThisDirection(figure, dir);
+				}
+			}
+		}
+	}
+}
+
+void Deck::makeMove(int ind, bool reverseMove) {
+
+	square hunter_check = turn ? w_c : b_c;
+	square hunter_queen = turn ? w_q : b_q;
+
+	Move move = move_options[ind];
+	pair<int, int> before = !reverseMove ? move.notation.front() : move.notation.back();
+	pair<int, int> after = !reverseMove ? move.notation.back() : move.notation.front();
+
+	if (desk[before.first][before.second] == hunter_check) {
+		if (move.checkToQueen) {
+			desk[after.first][after.second] = hunter_queen;
+		}
+		else {
+			desk[after.first][after.second] = hunter_check;
 		}
 	}
 	else {
-		hunter_queen.erase(first_field);
-		hunter_queen.insert(last_field);
+		desk[after.first][after.second] = hunter_queen;
 	}
+	if (reverseMove && move.checkToQueen) desk[after.first][after.second] = hunter_check;
 
-	return true;
+	if (before != after) desk[before.first][before.second] = b_s;
+
+	if (!reverseMove) {
+		for (auto eaten : move.eaten) {
+			desk[eaten.coords.first][eaten.coords.second] = b_s;
+		}
+	}
+	else {
+		for (auto eaten : move.eaten) {
+			desk[eaten.coords.first][eaten.coords.second] = eaten.figure;
+		}
+	}
 }
 
+void Deck::playTheGame() {
+
+	string string_move;
+	int ind_move = 0;
+	findEatOptions();
+	if (move_options.empty()) {
+		findMoveOptions();
+	}
+	cout << moveOptionsToString(move_options) << endl;
+
+	while (true) {
+		cout << "Enter your move:" << endl;
+		cin >> string_move;
+		notation_move = isValidRecord(string_move);
+		if (notation_move.notation.empty()) {
+			cout << "Invalid move notation!" << endl;
+			continue;
+		}
+		if (!isValidMove(notation_move, ind_move)) {
+			cout << "Invalid move! Check out right moves!" << endl;
+			continue;
+		}
+		makeMove(ind_move);
+		printDeck();
+
+		turn = !turn;
+		findEatOptions();
+		if (move_options.empty()) {
+			findMoveOptions();
+			if (move_options.empty()) {
+				break;
+			}
+		}
+		cout << moveOptionsToString(move_options) << endl;
+	}
+
+	if (turn) cout << "BLACK WINS!!!";
+	else cout << "WHITE WINS!!!";
+}
+
+int Deck::evaluatePosition() {
+	return 0;
+}
+
+//int Deck::runMiniMax(int recursive_level, int alpha, int beta) {
+//	if (recursive_level >= 2 * AI_level) {
+//		return evaluatePosition();
+//	}
+//	findEatOptions();
+//	if (move_options.empty()) {
+//		findMoveOptions();
+//		if (move_options.empty()) {
+//			return turn ? 10000 : -10000;
+//		}
+//	}
+//	vector<Move> save_move_options = move_options;
+//	if (!eatens.empty()) {
+//		for (auto eat_option : save_move_options) {
+//			isValidEat();
+//		}
+//	}
+//}
 
 int main() {
 
-	Deck deck;
+	//Position pos;
+	//pos.turn = false;
+	//pos.black_queens = { "c1" };
+	//pos.white_checks = { "b2" };
+	Position pos(true, {}, { "c3", "c5", "e3" }, { "d2" }, { "e5" });
+	Deck deck(pos);
+	//Deck deck;
 
 	deck.printDeck();
-//	deck.prototype();
 	deck.playTheGame();
+	string s;
+	cin >> s;
 
 	return 0;
 }
