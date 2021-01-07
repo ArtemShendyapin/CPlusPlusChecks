@@ -27,17 +27,29 @@ enum direction { up_left, up_right, down_left, down_right };
 struct Eaten {
 	square figure;
 	pair<int, int> coords;
+	Eaten() {}
+	Eaten(const Eaten& eaten) {
+		figure = eaten.figure;
+		coords = eaten.coords;
+	}
 };
 struct Move {
 	bool checkToQueen;
 	vector<pair<int, int>> notation;
 	vector<Eaten> eaten;
+	Move() {}
+	Move(const Move& move) {
+		checkToQueen = move.checkToQueen;
+		notation = move.notation;
+		eaten = move.eaten;
+	}
 };
 
 class Deck {
 
 	const int row_num = 8, col_num = 8;
 	const int AI_level = 3;
+	const int MAX_VALUE = 10000, MIN_VALUE = -10000, NOT_INITIALIZED = 10000;
 
 	bool turn;
 
@@ -96,8 +108,10 @@ public:
 	void canMoveThisDirection(pair<int, int> figure, direction dir);
 	void findMoveOptions();
 
-	void playTheGame();
+	void playWithPlayer();
 
 	int evaluatePosition();
-	//int runMiniMax(int recursive_level, int alpha, int beta);
+	int runMiniMax(int recursive_level, int alpha, int beta);
+
+	void playWithAI();
 };

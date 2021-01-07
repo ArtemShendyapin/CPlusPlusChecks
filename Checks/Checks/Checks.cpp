@@ -65,16 +65,16 @@ void Deck::printDeck() {
 				cout << char(219);
 				break;
 			case w_c:
-				cout << 'W';
+				cout << 'w';
 				break;
 			case b_c:
-				cout << 'B';
+				cout << 'b';
 				break;
 			case w_q:
-				cout << 'Q';
+				cout << 'W';
 				break;
 			case b_q:
-				cout << 'q';
+				cout << 'B';
 				break;
 			}
 		}
@@ -93,7 +93,7 @@ string Deck::moveToString(const Move &move) {
 }
 
 string Deck::moveOptionsToString(const vector<Move> &options) {
-	string rez = "Move options: ";
+	string rez = "";
 	if (options.empty()) return rez;
 	for (int i = 0; i < options.size() - 1; ++i) {
 		rez += moveToString(options[i]) + ", ";
@@ -362,6 +362,8 @@ void Deck::findMoveOptions() {
 
 void Deck::makeMove(int ind, bool reverseMove) {
 
+	if (reverseMove) turn = !turn;
+
 	square hunter_check = turn ? w_c : b_c;
 	square hunter_queen = turn ? w_q : b_q;
 
@@ -394,9 +396,10 @@ void Deck::makeMove(int ind, bool reverseMove) {
 			desk[eaten.coords.first][eaten.coords.second] = eaten.figure;
 		}
 	}
+	if (!reverseMove) turn = !turn;
 }
 
-void Deck::playTheGame() {
+void Deck::playWithPlayer() {
 
 	string string_move;
 	int ind_move = 0;
@@ -437,40 +440,148 @@ void Deck::playTheGame() {
 }
 
 int Deck::evaluatePosition() {
-	return 0;
+	int res = 0;
+	const int checkValue = 8;
+	const int figureNotOnBorder = 2, figureNotNearBorder = 1;// checkControlCenter = 2;
+	const int checkAdvancement = 1;
+	const int queenValue = 16;
+	
+	for (int row = 0; row < row_num; ++row) {
+		for (int col = row % 2; col < col_num; col += 2) {
+			square field = desk[row][col];
+			if (field == b_s) continue;
+			int val = 0;
+			if (field == w_c || field == b_c)
+				val = checkValue + (turn ? row : row_num - 1 - row) * checkAdvancement;
+			else
+				val = queenValue;
+			if (row != 0 && row != row_num - 1) {
+				val += figureNotOnBorder;
+				if (row != 1 && row != row_num - 2) {
+					val += figureNotNearBorder;
+				}
+			}
+			if (col != 0 && col != col_num - 1) {
+				val += figureNotOnBorder;
+				if (col != 1 && col != col_num - 2) {
+					val += figureNotNearBorder;
+				}
+			}
+
+			if (field == w_c || field == w_q) {
+				res += val;
+			} else if (field == b_c || field == b_q) {
+				res -= val;
+			}
+		}
+	}
+	return res;
 }
 
-//int Deck::runMiniMax(int recursive_level, int alpha, int beta) {
-//	if (recursive_level >= 2 * AI_level) {
-//		return evaluatePosition();
-//	}
-//	findEatOptions();
-//	if (move_options.empty()) {
-//		findMoveOptions();
-//		if (move_options.empty()) {
-//			return turn ? 10000 : -10000;
-//		}
-//	}
-//	vector<Move> save_move_options = move_options;
-//	if (!eatens.empty()) {
-//		for (auto eat_option : save_move_options) {
-//			isValidEat();
-//		}
-//	}
-//}
+int Deck::runMiniMax(int recursive_level, int alpha, int beta) {
+	if (recursive_level >= 2 * AI_level) {
+		return evaluatePosition();
+	}
+	findEatOptions();
+	if (move_options.empty()) {
+		findMoveOptions();
+		if (move_options.empty()) {
+			return turn ? MIN_VALUE : MAX_VALUE;
+		}
+	}
+	int MinMax = turn ? MIN_VALUE : MAX_VALUE;
+	int bestMove = NOT_INITIALIZED;
+	int test = NOT_INITIALIZED;
+	vector<Move> save_move_options = move_options;
+	for (int move_ind = 0; move_ind < save_move_options.size(); ++move_ind) {
+		makeMove(move_ind);
+//		cout << "Variant: " << moveToString(move_options[move_ind]) << endl;
+//		printDeck();
+		test = runMiniMax(recursive_level + 1, alpha, beta);
+		move_options = save_move_options;
+		makeMove(move_ind, true);
+//		cout << "Variant back: " << moveToString(move_options[move_ind]) << endl;
+//		cout << turn << endl;
+//		printDeck();
+
+		if ((test > MinMax && turn) ||
+			(test <= MinMax && !turn))
+		{
+			MinMax = test;
+			bestMove = move_ind;
+		}
+
+		if (turn && alpha < test)
+			alpha = test;
+		else if (!turn && beta > test)
+			beta = test;
+		if (beta < alpha)
+			break;
+	}
+
+	if (bestMove == NOT_INITIALIZED) {
+		return evaluatePosition();
+	}
+
+	if (recursive_level == 0 && bestMove != NOT_INITIALIZED) {
+		makeMove(bestMove);
+	}
+	return MinMax;
+}
+
+void Deck::playWithAI() {
+
+	printDeck();
+	string string_move;
+	int ind_move = 0;
+	findEatOptions();
+	if (move_options.empty()) {
+		findMoveOptions();
+	}
+	cout << moveOptionsToString(move_options) << endl;
+
+	while (true) {
+		if (turn == false) {
+			runMiniMax(0, MIN_VALUE, MAX_VALUE);
+		}
+		else {
+			cout << "Enter your move:" << endl;
+			cin >> string_move;
+			notation_move = isValidRecord(string_move);
+			if (notation_move.notation.empty()) {
+				cout << "Invalid move notation!" << endl;
+				continue;
+			}
+			if (!isValidMove(notation_move, ind_move)) {
+				cout << "Invalid move! Check out right moves!" << endl;
+				cout << moveOptionsToString(move_options) << endl;
+				continue;
+			}
+			makeMove(ind_move);
+		}
+		printDeck();
+
+		findEatOptions();
+		if (move_options.empty()) {
+			findMoveOptions();
+			if (move_options.empty()) {
+				break;
+			}
+		}
+		cout << moveOptionsToString(move_options) << endl;
+	}
+
+	if (turn) cout << "BLACK WINS!!!";
+	else cout << "WHITE WINS!!!";
+}
 
 int main() {
 
-	//Position pos;
-	//pos.turn = false;
-	//pos.black_queens = { "c1" };
-	//pos.white_checks = { "b2" };
-	Position pos(true, {}, { "c3", "c5", "e3" }, { "d2" }, { "e5" });
-	Deck deck(pos);
-	//Deck deck;
+	//Position pos(true, { "c3" }, {  }, {  }, { "c7" });
+	//Deck deck(pos);
+	Deck deck;
 
-	deck.printDeck();
-	deck.playTheGame();
+	deck.playWithAI();
 	string s;
 	cin >> s;
 
